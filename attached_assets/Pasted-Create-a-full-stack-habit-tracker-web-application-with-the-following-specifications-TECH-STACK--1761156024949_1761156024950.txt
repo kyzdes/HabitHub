@@ -1,0 +1,90 @@
+Create a full-stack habit tracker web application with the following specifications:
+
+TECH STACK:
+- Frontend: React with Vite
+- Styling: Tailwind CSS for responsive, mobile-first design
+- Backend: Node.js with Express
+- Database: PostgreSQL with ORM (Prisma or similar)
+- Authentication: Replit Auth or Firebase Authentication
+- State Management: React Context API or Redux
+
+CORE FEATURES:
+
+1. USER AUTHENTICATION & PROFILE
+- User registration and login system with secure password handling
+- User profile page with:
+  * Profile photo upload and display
+  * Editable user information (name, email, bio)
+  * Custom status text that can be updated from the profile page
+  * Profile settings section
+
+2. MAIN DASHBOARD (HOME PAGE)
+- Display habits as responsive rectangular cards in a grid layout
+- Each habit card should show:
+  * Habit name and optional description
+  * Today's completion checkbox (large, easy to tap)
+  * Mini visual indicator showing completion status for the last 7 days (small colored dots or icons)
+  * Edit and delete buttons (accessible via hover or long-press on mobile)
+- "Add New Habit" button prominently displayed
+- Drag-and-drop functionality to reorder habit cards
+- Support for up to 100 habits per user
+- Smooth animations for card interactions
+
+3. HABIT CREATION & MANAGEMENT
+- Modal or dedicated page for creating new habits with:
+  * Habit name (required)
+  * Description (optional)
+  * Category/tag selection
+  * Start date
+  * Optional reminder time
+- Edit habit functionality with same fields
+- Delete habit with confirmation dialog
+
+4. HABIT COMPLETION TRACKING
+- One-click checkbox to mark habit as complete for today
+- Visual feedback on completion (animation, color change)
+- Prevent multiple completions for the same day
+- Display last 7 days completion status on each card (mini calendar view)
+- Automatic timezone handling for "today"
+
+5. STATISTICS PAGE
+- Beautiful, interactive charts using Chart.js or Recharts:
+  * Weekly completion heatmap showing all habits
+  * Monthly overview with completion percentages
+  * Individual habit streak counter
+  * Best performing habits ranking
+  * Total completions over time (line chart)
+- Filter statistics by date range (last 7 days, 30 days, 90 days, all time)
+- Export data functionality (CSV or PDF)
+
+DATABASE SCHEMA:
+- Users table: id, email, password_hash, name, profile_photo_url, status, created_at
+- Habits table: id, user_id, name, description, category, order_index, created_at
+- Completions table: id, habit_id, user_id, completion_date, created_at
+
+UI/UX REQUIREMENTS:
+- Clean, modern design with smooth transitions
+- Fully responsive layout (mobile-first approach)
+- Optimistic UI updates for instant feedback
+- Loading states for all async operations
+- Error handling with user-friendly messages
+- Toast notifications for user actions (habit created, completed, etc.)
+- Color-coded visual feedback (green for complete, gray for incomplete)
+- Intuitive navigation with clear visual hierarchy
+- Accessibility features (ARIA labels, keyboard navigation)
+
+ADDITIONAL REQUIREMENTS:
+- Implement proper authentication middleware
+- Secure API endpoints with authorization checks
+- Use environment variables for sensitive data (Replit Secrets)
+- Add input validation on both frontend and backend
+- Implement proper error logging
+- Create database migrations for schema management
+- Add loading skeletons for better perceived performance
+- Implement pagination or infinite scroll if needed for large habit lists
+
+DEPLOYMENT:
+- Set up for Replit deployment with proper environment configuration
+- Include a README with setup instructions
+
+Build this as a production-ready application with clean, maintainable code and proper separation of concerns. Use modern JavaScript/React best practices throughout.
