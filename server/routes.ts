@@ -8,6 +8,10 @@ import {
   insertHabitSchema,
   updateHabitSchema,
   insertHabitCompletionSchema,
+  updateUserProfileSchema,
+  insertHabitJournalSchema,
+  insertMilestoneSchema,
+  insertHabitReminderSchema,
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
@@ -343,6 +347,277 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching stats:", error);
       res.status(500).json({ message: "Failed to fetch statistics" });
+    }
+  });
+
+  // ========== V2.0 GAMIFICATION ROUTES ==========
+
+  // Get user profile (XP, level, streaks)
+  app.get("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const profile = await storage.getUserProfile(userId);
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  // Update user profile
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const validation = updateUserProfileSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const error = fromZodError(validation.error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      const profile = await storage.updateUserProfile(userId, validation.data);
+      res.json(profile);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Get all achievements
+  app.get("/api/achievements", isAuthenticated, async (req: any, res) => {
+    try {
+      const achievements = await storage.getAchievements();
+      res.json(achievements);
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+      res.status(500).json({ message: "Failed to fetch achievements" });
+    }
+  });
+
+  // Get user's unlocked achievements
+  app.get("/api/achievements/mine", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userAchievements = await storage.getUserAchievements(userId);
+      res.json(userAchievements);
+    } catch (error) {
+      console.error("Error fetching user achievements:", error);
+      res.status(500).json({ message: "Failed to fetch user achievements" });
+    }
+  });
+
+  // Check and unlock achievements
+  app.post("/api/achievements/check", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const newlyUnlocked = await storage.checkAchievements(userId);
+      res.json({
+        unlocked: newlyUnlocked,
+        count: newlyUnlocked.length,
+      });
+    } catch (error) {
+      console.error("Error checking achievements:", error);
+      res.status(500).json({ message: "Failed to check achievements" });
+    }
+  });
+
+  // Get all habit templates
+  app.get("/api/templates", isAuthenticated, async (req: any, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const templates = await storage.getTemplates(category);
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+      res.status(500).json({ message: "Failed to fetch templates" });
+    }
+  });
+
+  // Get a single template
+  app.get("/api/templates/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getTemplateById(id);
+
+      if (!template) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching template:", error);
+      res.status(500).json({ message: "Failed to fetch template" });
+    }
+  });
+
+  // Create habit from template
+  app.post("/api/habits/from-template/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+
+      const habit = await storage.createHabitFromTemplate(userId, id);
+
+      // Check achievements after creating habit
+      await storage.checkAchievements(userId);
+
+      res.status(201).json(habit);
+    } catch (error: any) {
+      console.error("Error creating habit from template:", error);
+      if (error.message === "Template not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to create habit from template" });
+    }
+  });
+
+  // Create journal entry
+  app.post("/api/journal", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const validation = insertHabitJournalSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const error = fromZodError(validation.error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      const journal = await storage.createJournalEntry({
+        ...validation.data,
+        userId,
+      });
+
+      res.status(201).json(journal);
+    } catch (error) {
+      console.error("Error creating journal entry:", error);
+      res.status(500).json({ message: "Failed to create journal entry" });
+    }
+  });
+
+  // Get user's journal entries
+  app.get("/api/journal", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const limit = req.query.limit ? parseInt(req.query.limit) : undefined;
+      const journals = await storage.getJournalsByUser(userId, limit);
+      res.json(journals);
+    } catch (error) {
+      console.error("Error fetching journals:", error);
+      res.status(500).json({ message: "Failed to fetch journal entries" });
+    }
+  });
+
+  // Create milestone
+  app.post("/api/milestones", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const validation = insertMilestoneSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const error = fromZodError(validation.error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      const milestone = await storage.createMilestone({
+        ...validation.data,
+        userId,
+      });
+
+      res.status(201).json(milestone);
+    } catch (error) {
+      console.error("Error creating milestone:", error);
+      res.status(500).json({ message: "Failed to create milestone" });
+    }
+  });
+
+  // Get user's milestones
+  app.get("/api/milestones", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const milestones = await storage.getMilestonesByUser(userId);
+      res.json(milestones);
+    } catch (error) {
+      console.error("Error fetching milestones:", error);
+      res.status(500).json({ message: "Failed to fetch milestones" });
+    }
+  });
+
+  // Create reminder
+  app.post("/api/reminders", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const validation = insertHabitReminderSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const error = fromZodError(validation.error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      const reminder = await storage.createReminder({
+        ...validation.data,
+        userId,
+      });
+
+      res.status(201).json(reminder);
+    } catch (error) {
+      console.error("Error creating reminder:", error);
+      res.status(500).json({ message: "Failed to create reminder" });
+    }
+  });
+
+  // Get user's reminders
+  app.get("/api/reminders", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const reminders = await storage.getRemindersByUser(userId);
+      res.json(reminders);
+    } catch (error) {
+      console.error("Error fetching reminders:", error);
+      res.status(500).json({ message: "Failed to fetch reminders" });
+    }
+  });
+
+  // Update reminder
+  app.put("/api/reminders/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+      const validation = insertHabitReminderSchema.partial().safeParse(req.body);
+
+      if (!validation.success) {
+        const error = fromZodError(validation.error);
+        return res.status(400).json({ message: error.message });
+      }
+
+      const reminder = await storage.updateReminder(id, userId, validation.data);
+
+      if (!reminder) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      res.json(reminder);
+    } catch (error) {
+      console.error("Error updating reminder:", error);
+      res.status(500).json({ message: "Failed to update reminder" });
+    }
+  });
+
+  // Delete reminder
+  app.delete("/api/reminders/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { id } = req.params;
+
+      const deleted = await storage.deleteReminder(id, userId);
+
+      if (!deleted) {
+        return res.status(404).json({ message: "Reminder not found" });
+      }
+
+      res.json({ message: "Reminder deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting reminder:", error);
+      res.status(500).json({ message: "Failed to delete reminder" });
     }
   });
 
